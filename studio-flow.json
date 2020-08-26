@@ -1,0 +1,100 @@
+{
+    "description": "A New Flow",
+    "states": [{
+            "name": "Trigger",
+            "type": "trigger",
+            "transitions": [{
+                    "event": "incomingMessage"
+                },
+                {
+                    "event": "incomingCall"
+                },
+                {
+                    "next": "intro",
+                    "event": "incomingRequest"
+                }
+            ],
+            "properties": {
+                "offset": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "name": "intro",
+            "type": "send-and-wait-for-reply",
+            "transitions": [{
+                    "next": "callback",
+                    "event": "incomingMessage"
+                },
+                {
+                    "event": "timeout"
+                },
+                {
+                    "event": "deliveryFailure"
+                }
+            ],
+            "properties": {
+                "offset": {
+                    "x": 150,
+                    "y": 290
+                },
+                "service": "{{trigger.message.InstanceSid}}",
+                "channel": "{{trigger.message.ChannelSid}}",
+                "from": "{{flow.channel.address}}",
+                "body": "Hi, how may I address you?",
+                "timeout": 3600
+            }
+        },
+        {
+            "name": "ack",
+            "type": "send-message",
+            "transitions": [{
+                    "event": "sent"
+                },
+                {
+                    "event": "failed"
+                }
+            ],
+            "properties": {
+                "offset": {
+                    "x": 180,
+                    "y": 760
+                },
+                "service": "{{trigger.message.InstanceSid}}",
+                "channel": "{{trigger.message.ChannelSid}}",
+                "from": "{{flow.channel.address}}",
+                "to": "{{contact.channel.address}}",
+                "body": "Pleasure to meet you, {{widgets.intro.inbound.Body}}. HTTP response from callback was: \"{{widgets.callback.parsed.message}}\""
+            }
+        },
+        {
+            "name": "callback",
+            "type": "make-http-request",
+            "transitions": [{
+                    "next": "ack",
+                    "event": "success"
+                },
+                {
+                    "next": "ack",
+                    "event": "failed"
+                }
+            ],
+            "properties": {
+                "offset": {
+                    "x": -40,
+                    "y": 530
+                },
+                "method": "POST",
+                "content_type": "application/json;charset=utf-8",
+                "body": "{\n  \"inbound\": {\n    \"inboundSID\": \"{{widgets.intro.inbound.MessageSid}}\",\n    \"inboundText\": \"{{widgets.intro.inbound.Body}}\",\n    \"samplegiven\": \"{{flow.data.samplegiven}}\",\n    \"campaignName\": \"{{flow.data.campaignname}}\",\n    \"campaignId\": \"{{flow.data.campaignid}}\",\n    \"mobilenumber\": \"{{widgets.intro.inbound.From}}\"\n  },\n  \"outbound\": {\n    \"outboundSID\": \"{{widgets.intro.outbound.Sid}}\",\n    \"outboundText\": \"{{widgets.intro.outbound.Body}}\",\n    \"samplegiven\": \"{{flow.data.samplegiven}}\",\n    \"campaignName\": \"{{flow.data.campaignname}}\",\n    \"campaignId\": \"{{flow.data.campaignid}}\",\n    \"mobilenumber\": \"{{widgets.intro.outbound.To}}\"\n  },\n  \"completed\": \"false\"\n}",
+                "url": "https://you_callback.ngrok.io/callback"
+            }
+        }
+    ],
+    "initial_state": "Trigger",
+    "flags": {
+        "allow_concurrent_calls": true
+    }
+}
